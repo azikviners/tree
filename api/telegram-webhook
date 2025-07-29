@@ -1,0 +1,37 @@
+export const config = { api: { bodyParser: false } };
+
+export default async function handler(req, res) {
+  const botToken = process.env.BOT_TOKEN;
+  const adminId  = process.env.ADMIN_CHAT_ID;
+  const secret   = process.env.WEBHOOK_SECRET;
+
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "Method not allowed" });
+
+  if (!botToken || !adminId) return res.status(500).json({ ok: false, error: "Missing BOT_TOKEN or ADMIN_CHAT_ID" });
+
+  // Optional webhook secret verification
+  if (secret) {
+    const header = req.headers["x-telegram-bot-api-secret-token"];
+    if (header !== secret) return res.status(401).json({ ok: false, error: "Bad secret" });
+  }
+
+  // read raw body
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf8");
+
+  let update = {};
+  try { update = JSON.parse(raw); } catch {}
+
+  const msg = update?.message;
+  if (msg && String(msg.from?.id) === String(adminId) && msg.reply_to_message) {
+    const originalId = String(msg.reply_to_message.message_id);
+    const text = msg.text || msg.caption || "";
+    if (text) {
+      const store = globalThis.__treeStore || (globalThis.__treeStore = new Map());
+      store.set(originalId, text);
+    }
+  }
+
+  return res.status(200).json({ ok: true });
+}
