@@ -1,0 +1,46 @@
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.statusCode = 405;
+    return res.json({ ok: false, error: "Method not allowed" });
+  }
+
+  const botToken = process.env.BOT_TOKEN;
+  const adminId = process.env.ADMIN_CHAT_ID;
+  if (!botToken || !adminId) {
+    res.statusCode = 500;
+    return res.json({ ok: false, error: "Missing BOT_TOKEN or ADMIN_CHAT_ID" });
+  }
+
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf8");
+  let body = {};
+  try { body = JSON.parse(raw); } catch {}
+  const dataURL = body.image || "";
+  const m = dataURL.match(/^data:image\/\w+;base64,(.+)$/);
+  if (!m) {
+    res.statusCode = 400;
+    return res.json({ ok: false, error: "Bad image dataURL" });
+  }
+  const b64 = m[1];
+  const buf = Buffer.from(b64, "base64");
+
+  // Build multipart form for Telegram
+  const form = new FormData();
+  form.append("chat_id", adminId);
+  form.append("photo", new Blob([buf]), "screenshot.png");
+
+  const tg = await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, { method: "POST", body: form });
+  const j = await tg.json();
+
+  if (!j.ok) {
+    res.statusCode = 500;
+    return res.json({ ok: false, error: j.description || "sendPhoto failed" });
+  }
+
+  // Save placeholder in global store so /api/answer can see it
+  const store = globalThis.__treeStore || (globalThis.__treeStore = new Map());
+  store.set(String(j.result.message_id), "");
+
+  return res.json({ ok: true, message_id: j.result.message_id });
+}
