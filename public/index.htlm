@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>Helpx</title>
+
   <style>
     #answer-box {
       position: fixed;
       bottom: 20px;
       right: 20px;
       max-width: 300px;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0, 0, 0, 0.85);
       color: #fff;
       padding: 10px 15px;
       border-radius: 12px;
@@ -17,48 +18,24 @@
       font-size: 14px;
       z-index: 9999;
       display: none;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
-  <div id="answer-box"></div>
+  <div id="answer-box">Ответ загружается...</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script>
-    let lastMessageId = null;
+  <!-- html2canvas для скриншота -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 
-    document.addEventListener("contextmenu", async (e) => {
-      e.preventDefault(); // блокируем обычное меню
-
-      const canvas = await html2canvas(document.body);
-      const dataUrl = canvas.toDataURL("image/png");
-
-      const res = await fetch("/api/telegram", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl })
-      });
-
-      const json = await res.json();
-      if (!json.ok) return alert("❌ Ошибка отправки");
-
-      lastMessageId = json.message_id;
-      checkAnswerLoop();
-    });
-
-    async function checkAnswerLoop() {
+  <!-- Подключаем клиентский скрипт с tree.vercel.app/x.js -->
+  <script type="module">
+    import("/x.js").catch(err => {
+      console.error("Ошибка загрузки скрипта:", err);
       const box = document.getElementById("answer-box");
-      for (let i = 0; i < 60; i++) { // пробуем 60 раз (примерно 60 сек)
-        await new Promise(r => setTimeout(r, 1000));
-        const res = await fetch("/api/answer?message_id=" + lastMessageId);
-        const json = await res.json();
-        if (json.ok && json.answer) {
-          box.textContent = json.answer;
-          box.style.display = "block";
-          return;
-        }
-      }
-    }
+      box.textContent = "⚠️ Не удалось загрузить функциональность.";
+      box.style.display = "block";
+    });
   </script>
 </body>
 </html>
