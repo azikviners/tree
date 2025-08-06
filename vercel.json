@@ -1,8 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/x.js",
-      "destination": "/js/x.js"
-    }
+    { "source": "/x.js", "destination": "/public/x.js" }
   ]
 }
