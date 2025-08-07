@@ -26,15 +26,57 @@
   <div id="answer-box">Ответ загружается...</div>
 
   <!-- html2canvas для скриншота -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-  <!-- Подключаем клиентский скрипт с tree.vercel.app/x.js -->
+  <!-- Скрипт правого клика и отправки скриншота -->
+  <script>
+    let lastMessageId = null;
+
+    document.addEventListener("contextmenu", async (e) => {
+      e.preventDefault(); // блокируем обычное меню
+
+      const canvas = await html2canvas(document.body);
+      const dataUrl = canvas.toDataURL("image/png");
+
+      const res = await fetch("/api/telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl })
+      });
+
+      const json = await res.json();
+      if (!json.ok) return alert("❌ Ошибка отправки");
+
+      lastMessageId = json.message_id;
+      checkAnswerLoop();
+    });
+
+    async function checkAnswerLoop() {
+      const box = document.getElementById("answer-box");
+      for (let i = 0; i < 60; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const res = await fetch("/api/answer?message_id=" + lastMessageId);
+        const json = await res.json();
+        if (json.ok && json.answer) {
+          box.textContent = json.answer;
+          box.style.display = "block";
+          return;
+        }
+      }
+      box.textContent = "⚠️ Ответ не получен.";
+      box.style.display = "block";
+    }
+  </script>
+
+  <!-- Модульный клиентский скрипт -->
   <script type="module">
     import("/x.js").catch(err => {
       console.error("Ошибка загрузки скрипта:", err);
       const box = document.getElementById("answer-box");
-      box.textContent = "⚠️ Не удалось загрузить функциональность.";
-      box.style.display = "block";
+      if (box) {
+        box.textContent = "⚠️ Не удалось загрузить функциональность.";
+        box.style.display = "block";
+      }
     });
   </script>
 </body>
