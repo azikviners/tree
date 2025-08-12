@@ -1,25 +1,32 @@
-export const config = { api: { bodyParser: { sizeLimit: "10mb" } } };
+let lastReply = null; // храним последний ответ в памяти
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
+export const config = { runtime: "edge" };
 
-  const { image } = req.body;
-  if (!image) return res.status(400).json({ error: "No image" });
+export default async function handler(req) {
+  if (req.method === "POST") {
+    try {
+      const data = await req.json();
+      // Извлекаем текст сообщения
+      const message = data.message?.text || "";
 
-  const botToken = process.env.BOT_TOKEN; // токен твоего бота
-  const chatId = process.env.ADMIN_CHAT_ID; // твой Telegram ID
+      // Здесь можно обработать или отправить ответ в Telegram
+      lastReply = `Вы написали: ${message}`;
 
-  // Отправка скриншота в Telegram
-  await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-    method: "POST",
-    body: new URLSearchParams({
-      chat_id: chatId,
-      caption: "Новый скриншот",
-      photo: image
-    }),
-  });
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
-  // Тут можно реализовать ожидание ответа
-  // Для теста просто возвращаем заглушку
-  res.json({ reply: "Скриншот отправлен администратору" });
+  return new Response("Method not allowed", { status: 405 });
+}
+
+// Функция для получения последнего ответа
+export function getLastReply() {
+  return lastReply;
 }
