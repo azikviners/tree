@@ -1,1 +1,139 @@
-<script src="https://gist.github.com/azikviners/4acb9e3e847ed0495e335977201b309f.js"></script>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Онлайн тестирование</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f2f2f2; padding:20px; }
+    h1, h2 { color:#333; }
+    .box { background:#fff; padding:20px; margin-bottom:20px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1); }
+    input, button { width:100%; padding:8px; margin-top:6px; margin-bottom:12px; }
+    button { background:#4CAF50; color:white; border:none; border-radius:4px; cursor:pointer; }
+    button.secondary { background:#2196F3; }
+    button.danger { background:#f44336; width:auto; }
+    .option { display:flex; gap:6px; margin-bottom:6px; }
+    .question { margin-bottom:15px; }
+  </style>
+</head>
+<body>
+
+<h1>📝 Система онлайн-тестирования</h1>
+
+<div class="box">
+  <h2>➕ Добавить вопрос</h2>
+  <input id="qText" placeholder="Введите текст вопроса">
+
+  <div id="options"></div>
+
+  <button type="button" class="secondary" onclick="addOption()">➕ Добавить вариант</button>
+
+  <input id="qCorrect" placeholder="Номер правильного варианта (1,2,3...)">
+  <button type="button" onclick="addQuestion()">✅ Добавить вопрос</button>
+</div>
+
+<div class="box">
+  <h2>📋 Тест</h2>
+  <form id="testForm"></form>
+  <button type="button" onclick="finishTest()">📊 Завершить тест</button>
+</div>
+
+<div class="box">
+  <h2>📊 Анализ ответов</h2>
+  <div id="analysis"></div>
+</div>
+
+<script>
+  const optionsDiv = document.getElementById('options');
+  const testForm = document.getElementById('testForm');
+  const analysis = document.getElementById('analysis');
+
+  let questions = [];
+
+  function addOption() {
+    const div = document.createElement('div');
+    div.className = 'option';
+
+    const input = document.createElement('input');
+    input.placeholder = 'Вариант ответа';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'danger';
+    btn.textContent = '✖';
+    btn.onclick = function () {
+      div.remove();
+    };
+
+    div.appendChild(input);
+    div.appendChild(btn);
+    optionsDiv.appendChild(div);
+  }
+
+  // два варианта по умолчанию
+  addOption();
+  addOption();
+
+  function addQuestion() {
+    const text = document.getElementById('qText').value.trim();
+    const correct = parseInt(document.getElementById('qCorrect').value, 10) - 1;
+    const inputs = optionsDiv.querySelectorAll('input');
+    const opts = Array.from(inputs).map(i => i.value.trim()).filter(v => v !== '');
+
+    if (!text || opts.length < 2 || isNaN(correct) || correct < 0 || correct >= opts.length) {
+      alert('Заполните вопрос, варианты и правильный номер');
+      return;
+    }
+
+    questions.push({ text: text, options: opts, correct: correct });
+
+    document.getElementById('qText').value = '';
+    document.getElementById('qCorrect').value = '';
+    optionsDiv.innerHTML = '';
+    addOption();
+    addOption();
+
+    renderTest();
+  }
+
+  function renderTest() {
+    testForm.innerHTML = '';
+
+    questions.forEach(function (q, i) {
+      const div = document.createElement('div');
+      div.className = 'question';
+
+      let html = '<b>' + (i + 1) + '. ' + q.text + '</b><br>';
+      q.options.forEach(function (opt, j) {
+        html += '<label>' +
+          '<input type="radio" name="q' + i + '" value="' + j + '"> ' +
+          opt +
+          '</label><br>';
+      });
+
+      div.innerHTML = html;
+      testForm.appendChild(div);
+    });
+  }
+
+  function finishTest() {
+    let score = 0;
+    let html = '';
+
+    questions.forEach(function (q, i) {
+      const checked = document.querySelector('input[name="q' + i + '"]:checked');
+      const user = checked ? parseInt(checked.value, 10) : -1;
+      const ok = user === q.correct;
+
+      if (ok) score++;
+
+      html += '<p><b>' + (i + 1) + '. ' + q.text + '</b><br>' +
+        (ok ? '✅ Верно' : '❌ Неверно') + '<br>' +
+        'Правильный ответ: ' + q.options[q.correct] + '</p>';
+    });
+
+    analysis.innerHTML = '<h3>Результат: ' + score + ' / ' + questions.length + '</h3>' + html;
+  }
+</script>
+
+</body>
+</html>
